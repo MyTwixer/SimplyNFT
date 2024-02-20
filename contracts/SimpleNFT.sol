@@ -1,80 +1,55 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.23;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721VotesUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract SimpleNFT is Initializable, ERC721Upgradeable, ERC721EnumerableUpgradeable, ERC721URIStorageUpgradeable, ERC721PausableUpgradeable, OwnableUpgradeable, ERC721BurnableUpgradeable, EIP712Upgradeable, ERC721VotesUpgradeable {
-    uint256 private _nextTokenId;
+contract SimplyToken is ERC721, Ownable {
+    uint256 public totalSupply;
+    uint256 public maxSupply;
+    uint256 public mintPrice;
+    bool public isPublicMintEnadled;
+    string internal baseTokenURI;
+    uint256 public maxPerWallet;
+    address payable public withdrawWallet;
+    mapping(address => uint256) public mintedWallets;
 
-    constructor() {
-        _disableInitializers();
+    constructor(address initialOwner) ERC721("MyToken", "MTK") Ownable(initialOwner) {
+        totalSupply = 0;
+        maxSupply = 100;
+        mintPrice = 0.01 ether;
+        maxPerWallet = 3;
     }
 
-    function initialize(address initialOwner) initializer public {
-        __ERC721_init("SimpleNFT", "SNF");
-        __ERC721Enumerable_init();
-        __ERC721URIStorage_init();
-        __ERC721Pausable_init();
-        __Ownable_init(initialOwner);
-        __ERC721Burnable_init();
-        __EIP712_init("SimpleNFT", "1");
-        __ERC721Votes_init();
+    function setIsPublicMintEnadled(bool _isPublicMintEnadled) external onlyOwner {
+        isPublicMintEnadled = _isPublicMintEnadled;
     }
 
-    function pause() public onlyOwner {
-        _pause();
+    function setBaseTokenURI(string calldata _baseTokenURI) external onlyOwner {
+        baseTokenURI = _baseTokenURI;
     }
 
-    function unpause() public onlyOwner {
-        _unpause();
+    function tokenURI(uint256 _tokenId) public view override returns (string memory) {
+        _requireOwned(_tokenId);
+
+        return string(abi.encodePacked(baseTokenURI, Strings.toString(_tokenId), ".json"));
     }
 
-    function safeMint(address to, string memory uri) public onlyOwner {
-        uint256 tokenId = _nextTokenId++;
-        _safeMint(to, tokenId);
-        _setTokenURI(tokenId, uri);
+    function withdraw() external onlyOwner {
+        (bool success,) = withdrawWallet.call{value: address(this).balance}("");
+        require(success, "withdraw failed");
     }
 
-    // The following functions are overrides required by Solidity.
+    function mint(uint256 _quantity) public payable onlyOwner {
+        require(isPublicMintEnadled, "mint not enabled ");
+        require(msg.value == _quantity * mintPrice, "wrong mint value");
+        require(totalSupply + _quantity <= maxSupply, "sold out");
+        require(mintedWallets[msg.sender] + _quantity <= maxPerWallet, "exceed max wallet");
 
-    function _update(address to, uint256 tokenId, address auth)
-        internal
-        override(ERC721Upgradeable, ERC721EnumerableUpgradeable, ERC721PausableUpgradeable, ERC721VotesUpgradeable)
-        returns (address)
-    {
-        return super._update(to, tokenId, auth);
-    }
-
-    function _increaseBalance(address account, uint128 value)
-        internal
-        override(ERC721Upgradeable, ERC721EnumerableUpgradeable, ERC721VotesUpgradeable)
-    {
-        super._increaseBalance(account, value);
-    }
-
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
-        returns (string memory)
-    {
-        return super.tokenURI(tokenId);
-    }
-
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721Upgradeable, ERC721EnumerableUpgradeable, ERC721URIStorageUpgradeable)
-        returns (bool)
-    {
-        return super.supportsInterface(interfaceId);
+        for (uint256 i = 0; i < _quantity; i++) {
+            uint256 tokenId = totalSupply + 1;
+            totalSupply++;
+            _safeMint(msg.sender, tokenId);
+        }
     }
 }
