@@ -5,7 +5,7 @@ import "@nomicfoundation/hardhat-foundry";
 import dotenv from 'dotenv'; 
 dotenv.config();  
 
-const privateKey = "0x" + process.env.API_URL;
+const privateKey = "0x" + process.env.PRIVATE_KEY;
 
 
 const config: HardhatUserConfig = {
