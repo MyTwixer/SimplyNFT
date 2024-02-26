@@ -5,11 +5,7 @@ import "@nomicfoundation/hardhat-foundry";
 import dotenv from 'dotenv'; 
 dotenv.config();  
 
-<<<<<<< HEAD
-const privateKey = "0x" + process.env.PRIVATE_KEY;
-=======
 const privateKey = "" + process.env.PRIVATE_KEY;
->>>>>>> fe1acefdd21b2c0f52980d39c86dc6e3035cff1a
 
 
 const config: HardhatUserConfig = {
@@ -24,6 +20,9 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_KEY
+  },
+  sourcify: {
+    enabled: true,
   }
 };
 
